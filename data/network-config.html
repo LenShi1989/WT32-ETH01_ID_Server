@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>網路設定 - ESP32</title>
+  <style>
+    :root {
+      --primary: #667eea;
+      --secondary: #764ba2;
+      --success: #28a745;
+      --warning: #ffc107;
+      --danger: #dc3545;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      color: white;
+    }
+
+    .header h1 {
+      font-size: 2.3em;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .header a {
+      color: white;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .header a:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .setup-container {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+    }
+
+    .setup-progress {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 30px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #eee;
+    }
+
+    .progress-step {
+      text-align: center;
+      flex: 1;
+      position: relative;
+    }
+
+    .step-number {
+      width: 40px;
+      height: 40px;
+      background: #ddd;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 10px;
+      font-weight: bold;
+      color: #666;
+      transition: all 0.3s ease;
+    }
+
+    .progress-step.active .step-number {
+      background: var(--primary);
+      color: white;
+    }
+
+    .step-title {
+      font-size: 0.9em;
+      color: #666;
+    }
+
+    .progress-step.active .step-title {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .form-section {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 10px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .form-section h3 {
+      color: var(--primary);
+      margin-bottom: 20px;
+      font-size: 1.2em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 1em;
+      transition: all 0.3s ease;
+      background: white;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-check {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+      cursor: pointer;
+    }
+
+    .form-check-input {
+      margin-right: 10px;
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+    }
+
+    .form-check-label {
+      font-weight: 500;
+      color: #333;
+      cursor: pointer;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    @media (max-width: 768px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 15px;
+      margin-top: 30px;
+      justify-content: center;
+    }
+
+    .btn {
+      padding: 15px 30px;
+      text-align: center;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1.1em;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-width: 150px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+
+    .static-ip-fields {
+      display: none;
+      animation: fadeIn 0.3s ease;
+      margin-top: 15px;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .mode-description {
+      background: rgba(102, 126, 234, 0.1);
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .mode-description h4 {
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+
+    .mode-description p {
+      color: #555;
+      line-height: 1.5;
+      font-size: 0.95em;
+    }
+
+    .success-message {
+      text-align: center;
+      padding: 30px;
+    }
+
+    .success-icon {
+      font-size: 4em;
+      color: var(--success);
+      margin-bottom: 20px;
+    }
+
+    select.form-control {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23667eea' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 15px center;
+      background-size: 12px;
+      padding-right: 40px;
+    }
+
+    .wifi-scanner {
+      margin-top: 20px;
+    }
+
+    .scan-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+
+    .scan-btn:hover {
+      background: var(--secondary);
+    }
+
+    .wifi-list {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px;
+      background: white;
+      margin-bottom: 20px;
+    }
+
+    .wifi-item {
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .wifi-item:hover {
+      background: #f8f9fa;
+    }
+
+    .wifi-item.selected {
+      background: #e8f4fd;
+      border-left: 3px solid var(--primary);
+    }
+
+    .wifi-icon {
+      font-size: 1.5em;
+      color: #666;
+      width: 30px;
+      text-align: center;
+    }
+
+    .wifi-info {
+      flex: 1;
+    }
+
+    .wifi-ssid {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 4px;
+    }
+
+    .wifi-details {
+      display: flex;
+      gap: 15px;
+      font-size: 0.9em;
+      color: #666;
+    }
+
+    .signal-strength {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .signal-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 20px;
+    }
+
+    .signal-bar {
+      width: 4px;
+      background: #ddd;
+      border-radius: 1px;
+    }
+
+    .signal-bar.active {
+      background: var(--success);
+    }
+
+    .wifi-encryption {
+      padding: 2px 8px;
+      background: #f0f0f0;
+      border-radius: 10px;
+      font-size: 0.8em;
+    }
+
+    .connection-form {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+      display: none;
+    }
+
+    .connection-form.show {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .password-input {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .password-input input {
+      flex: 1;
+    }
+
+    .connect-btn {
+      background: var(--success);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .connect-btn:hover {
+      background: #218838;
+    }
+
+    .connection-status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .connection-status.show {
+      display: block;
+    }
+
+    .status-connecting {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      color: #856404;
+    }
+
+    .status-success {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+
+    .status-error {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+    }
+
+    .loading::after {
+      content: '...';
+      animation: dots 1.5s infinite;
+    }
+
+    @keyframes dots {
+
+      0%,
+      20% {
+        content: '.';
+      }
+
+      40% {
+        content: '..';
+      }
+
+      60%,
+      100% {
+        content: '...';
+      }
+    }
+
+    .refresh-btn {
+      background: transparent;
+      border: none;
+      color: var(--primary);
+      cursor: pointer;
+      font-size: 1.2em;
+      padding: 5px;
+      margin-left: 10px;
+    }
+
+    .current-connection {
+      background: #e8f5e9;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border-left: 4px solid var(--success);
+    }
+
+    .current-connection h4 {
+      margin: 0 0 10px 0;
+      color: var(--success);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .disconnect-btn {
+      background: var(--danger);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9em;
+      margin-top: 10px;
+    }
+
+    .disconnect-btn:hover {
+      background: #c82333;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><span>🔧</span> 網路設定精靈</h1>
+      <a href="/"><span>←</span> 返回主頁</a>
+    </div>
+
+    <div class="setup-container">
+      <div class="setup-progress">
+        <div class="progress-step active" id="step1">
+          <div class="step-number">1</div>
+          <div class="step-title">基本設定</div>
+        </div>
+        <div class="progress-step" id="step2">
+          <div class="step-number">2</div>
+          <div class="step-title">WiFi設定</div>
+        </div>
+        <div class="progress-step" id="step3">
+          <div class="step-number">3</div>
+          <div class="step-title">完成</div>
+        </div>
+      </div>
+
+      <div id="setup-content">
+        <!-- 步驟1：基本設定 -->
+        <div id="step1-content" class="form-content">
+          <div class="form-section">
+            <h3><span>🏷️</span> 設備基本資訊</h3>
+            <div class="form-group">
+              <label for="device_name"><span>📝</span> 設備名稱</label>
+              <input type="text" id="device_name" name="device_name" class="form-control"
+                placeholder="輸入設備名稱（如：客廳ESP32）" value="">
+            </div>
+
+            <div class="form-group">
+              <label for="ap_ssid"><span>📡</span> AP網路名稱</label>
+              <input type="text" id="ap_ssid" name="ap_ssid" class="form-control" placeholder="輸入AP網路名稱" value="">
+              <small style="color: #666; margin-top: 5px; display: block;">
+                格式: ESP32_ + MAC最後2碼 (無密碼)
+              </small>
+            </div>
+          </div>
+
+          <div class="btn-group">
+            <button type="button" id="next-step-1" class="btn btn-primary">
+              下一步 <span>→</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 步驟2：WiFi設定 -->
+        <div id="step2-content" class="form-content" style="display: none;">
+          <div class="form-section">
+            <h3><span>📶</span> WiFi設定</h3>
+
+            <!-- 當前連接狀態 -->
+            <div id="current-connection" class="current-connection" style="display: none;">
+              <h4><span>✅</span> 已連接</h4>
+              <p><strong>SSID:</strong> <span id="connected-ssid"></span></p>
+              <p><strong>IP地址:</strong> <span id="connected-ip"></span></p>
+              <p><strong>訊號強度:</strong> <span id="connected-rssi"></span> dBm</p>
+              <button type="button" id="disconnect-btn" class="disconnect-btn">
+                <span>❌</span> 斷開連接
+              </button>
+            </div>
+
+            <!-- WiFi掃描區域 -->
+            <div class="wifi-scanner">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
+                <h4 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                  <span>🔍</span> 可用的WiFi網路
+                </h4>
+                <button type="button" id="scan-wifi-btn" class="scan-btn">
+                  <span>🔄</span> 掃描網路
+                </button>
+              </div>
+
+              <div id="wifi-list" class="wifi-list">
+                <div class="loading" id="wifi-loading">掃描中</div>
+                <!-- WiFi列表將在這裡動態生成 -->
+              </div>
+            </div>
+
+            <!-- 連接表單 -->
+            <div id="connection-form" class="connection-form">
+              <h4>連接至: <span id="selected-ssid"></span></h4>
+              <div class="form-group">
+                <label for="wifi_password"><span>🔐</span> WiFi密碼</label>
+                <div class="password-input">
+                  <input type="password" id="wifi_password" name="wifi_password" class="form-control"
+                    placeholder="輸入WiFi密碼">
+                  <button type="button" id="show-password" class="btn btn-secondary" style="padding: 0 15px;">
+                    顯示
+                  </button>
+                </div>
+              </div>
+              <div class="btn-group" style="justify-content: flex-start; margin-top: 15px;">
+                <button type="button" id="connect-btn" class="connect-btn">
+                  <span>🔗</span> 連接
+                </button>
+                <button type="button" id="cancel-connect" class="btn btn-secondary">
+                  取消
+                </button>
+              </div>
+            </div>
+
+            <!-- 連接狀態 -->
+            <div id="connection-status" class="connection-status"></div>
+          </div>
+
+          <div class="form-section">
+            <h3><span>🔌</span> 乙太網設定</h3>
+            <div class="form-check">
+              <input type="checkbox" id="eth_enabled" name="eth_enabled" class="form-check-input" checked>
+              <label for="eth_enabled" class="form-check-label">啟用乙太網</label>
+            </div>
+
+            <div class="form-check">
+              <input type="checkbox" id="eth_dhcp" name="eth_dhcp" class="form-check-input" checked>
+              <label for="eth_dhcp" class="form-check-label">自動取得IP (DHCP)</label>
+            </div>
+
+            <div id="staticIPFields" class="static-ip-fields">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="eth_static_ip"><span>📍</span> 固定IP地址</label>
+                  <input type="text" id="eth_static_ip" name="eth_static_ip" class="form-control"
+                    placeholder="192.168.1.100" value="">
+                </div>
+
+                <div class="form-group">
+                  <label for="eth_gateway"><span>🚪</span> 閘道器</label>
+                  <input type="text" id="eth_gateway" name="eth_gateway" class="form-control" placeholder="192.168.1.1"
+                    value="">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="eth_subnet"><span>🌐</span> 子網路遮罩</label>
+                  <input type="text" id="eth_subnet" name="eth_subnet" class="form-control" placeholder="255.255.255.0"
+                    value="">
+                </div>
+
+                <div class="form-group">
+                  <label for="eth_dns1"><span>🔍</span> 主要DNS</label>
+                  <input type="text" id="eth_dns1" name="eth_dns1" class="form-control" placeholder="8.8.8.8" value="">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3><span>⚙️</span> 網路運作模式</h3>
+            <div class="form-group">
+              <label for="network_mode"><span>🔄</span> 選擇網路模式</label>
+              <select id="network_mode" name="network_mode" class="form-control">
+                <option value="0" selected>AP模式 (僅WiFi熱點)</option>
+                <option value="1">僅乙太網</option>
+                <option value="2">僅WiFi</option>
+                <option value="3">雙網路模式</option>
+                <option value="4">乙太網優先</option>
+                <option value="5">WiFi優先</option>
+              </select>
+            </div>
+
+            <div class="mode-description" id="mode-description">
+              <h4>AP模式</h4>
+              <p>設備作為WiFi熱點，其他設備可連接到此熱點進行設定或使用服務。適合首次設定或沒有其他網路的情況。</p>
+            </div>
+          </div>
+
+          <div class="btn-group">
+            <button type="button" id="prev-step-2" class="btn btn-secondary">
+              <span>←</span> 上一步
+            </button>
+            <button type="button" id="save-config-btn" class="btn btn-primary">
+              💾 儲存並套用設定
+            </button>
+          </div>
+        </div>
+
+        <!-- 步驟3：完成 -->
+        <div id="step3-content" class="form-content" style="display: none;">
+          <div class="success-message">
+            <div class="success-icon">✅</div>
+            <h2>設定完成！</h2>
+            <p style="margin: 20px 0; color: #555; line-height: 1.6;">
+              您的設定已成功儲存。設備將自動重新啟動並套用新的網路設定。
+            </p>
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0;">
+              <p><strong>請注意：</strong></p>
+              <ul style="text-align: left; margin: 15px 0; padding-left: 20px;">
+                <li>設備將在3秒後自動重新啟動</li>
+                <li>重新啟動後，請連接到您設定的網路</li>
+                <li>使用新的IP地址訪問設備控制台</li>
+              </ul>
+            </div>
+            <div id="countdown" style="font-size: 1.2em; color: var(--primary); margin: 20px 0;">
+              重新啟動倒數: <span id="countdown-number">3</span> 秒
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 全局變數
+    let currentStep = 1;
+    let isFirstSetup = true;
+    let selectedWiFi = null;
+    let currentConnection = null;
+    let wifiScanInterval = null;
+
+    // 模式描述對應
+    const modeDescriptions = {
+      0: { title: "AP模式", description: "設備作為WiFi熱點，其他設備可連接到此熱點進行設定或使用服務。適合首次設定或沒有其他網路的情況。" },
+      1: { title: "僅乙太網", description: "只使用RJ45乙太網連接，需要連接網路線。適合固定位置且有線網路穩定的環境。" },
+      2: { title: "僅WiFi", description: "只使用無線WiFi連接，需要設定WiFi網路。適合無線環境或移動使用。" },
+      3: { title: "雙網路模式", description: "同時使用乙太網和WiFi，兩個網路都可連線。適合需要高可用性的環境。" },
+      4: { title: "乙太網優先", description: "優先使用乙太網，當乙太網斷線時自動切換到WiFi。適合有線為主、無線為備用的環境。" },
+      5: { title: "WiFi優先", description: "優先使用WiFi，當WiFi斷線時自動切換到乙太網。適合無線為主、有線為備用的環境。" }
+    };
+
+    // DHCP切換處理
+    const dhcpCheckbox = document.getElementById('eth_dhcp');
+    const staticFields = document.getElementById('staticIPFields');
+
+    function toggleStaticFields() {
+      if (dhcpCheckbox.checked) {
+        staticFields.style.display = 'none';
+      } else {
+        staticFields.style.display = 'block';
+      }
+    }
+
+    // 網路模式選擇處理
+    const networkModeSelect = document.getElementById('network_mode');
+    const modeDescription = document.getElementById('mode-description');
+
+    function updateModeDescription() {
+      const mode = parseInt(networkModeSelect.value);
+      if (modeDescriptions[mode]) {
+        modeDescription.innerHTML = `
+                    <h4>${modeDescriptions[mode].title}</h4>
+                    <p>${modeDescriptions[mode].description}</p>
+                `;
+      }
+    }
+
+    // 步驟切換函數
+    function nextStep(step) {
+      console.log('下一步按鈕被點擊，目標步驟:', step);
+
+      if (step === 2) {
+        // 驗證步驟1的輸入
+        const deviceName = document.getElementById('device_name').value.trim();
+        const apSsid = document.getElementById('ap_ssid').value.trim();
+
+        if (!deviceName) {
+          alert('請輸入設備名稱');
+          return;
+        }
+
+        if (!apSsid) {
+          alert('請輸入AP網路名稱');
+          return;
+        }
+
+        // 載入當前連接狀態
+        loadCurrentConnection();
+      }
+
+      showStep(step);
+    }
+
+    function prevStep(step) {
+      console.log('上一步按鈕被點擊，目標步驟:', step);
+      showStep(step);
+    }
+
+    function showStep(step) {
+      console.log('顯示步驟:', step);
+
+      // 隱藏所有步驟內容
+      document.querySelectorAll('.form-content').forEach(el => {
+        el.style.display = 'none';
+      });
+
+      // 重置所有步驟狀態
+      document.querySelectorAll('.progress-step').forEach(el => {
+        el.classList.remove('active');
+      });
+
+      // 顯示當前步驟
+      const stepContent = document.getElementById(`step${step}-content`);
+      if (stepContent) {
+        stepContent.style.display = 'block';
+        const stepIndicator = document.getElementById(`step${step}`);
+        if (stepIndicator) {
+          stepIndicator.classList.add('active');
+        }
+        currentStep = step;
+
+        // 如果是步驟2，自動掃描WiFi
+        if (step === 2) {
+          setTimeout(() => {
+            scanWiFi();
+          }, 500);
+        }
+      } else {
+        console.error('找不到步驟內容:', step);
+      }
+    }
+
+    // 載入當前連接狀態
+    async function loadCurrentConnection() {
+      try {
+        const response = await fetch('/status');
+        const data = await response.json();
+
+        const currentConn = document.getElementById('current-connection');
+        const connectedSsid = document.getElementById('connected-ssid');
+        const connectedIp = document.getElementById('connected-ip');
+        const connectedRssi = document.getElementById('connected-rssi');
+
+        if (data.wifi_connected && data.wifi_ssid) {
+          currentConn.style.display = 'block';
+          connectedSsid.textContent = data.wifi_ssid;
+          connectedIp.textContent = data.wifi_ip;
+          connectedRssi.textContent = data.wifi_rssi;
+          currentConnection = data.wifi_ssid;
+        } else {
+          currentConn.style.display = 'none';
+          currentConnection = null;
+        }
+
+        isFirstSetup = data.first_setup === true || data.first_setup === 'true';
+
+      } catch (error) {
+        console.error('載入當前連接狀態失敗:', error);
+      }
+    }
+
+    // 掃描WiFi
+    async function scanWiFi() {
+      const wifiList = document.getElementById('wifi-list');
+      wifiList.innerHTML = '<div class="loading">掃描WiFi網路中</div>';
+
+      try {
+        const response = await fetch('/scan-wifi');
+        const data = await response.json();
+
+        if (data.networks && data.networks.length > 0) {
+          renderWiFiList(data.networks);
+        } else {
+          wifiList.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">未找到任何WiFi網路</div>';
+        }
+      } catch (error) {
+        console.error('掃描WiFi失敗:', error);
+        wifiList.innerHTML = '<div style="text-align: center; padding: 20px; color: #dc3545;">掃描失敗，請重試</div>';
+      }
+    }
+
+    // 渲染WiFi列表
+    function renderWiFiList(networks) {
+      const wifiList = document.getElementById('wifi-list');
+      wifiList.innerHTML = '';
+
+      // 按訊號強度排序
+      networks.sort((a, b) => b.rssi - a.rssi);
+
+      networks.forEach(network => {
+        const wifiItem = document.createElement('div');
+        wifiItem.className = 'wifi-item';
+        if (selectedWiFi === network.ssid) {
+          wifiItem.classList.add('selected');
+        }
+        if (currentConnection === network.ssid) {
+          wifiItem.style.background = '#e8f5e9';
+        }
+
+        // 計算訊號條數
+        const quality = network.quality || 0;
+        const bars = Math.min(4, Math.floor(quality / 25));
+
+        // 建立訊號條HTML
+        let signalBarsHtml = '';
+        for (let i = 0; i < 4; i++) {
+          const height = (i + 1) * 5;
+          const isActive = i < bars;
+          signalBarsHtml += `<div class="signal-bar ${isActive ? 'active' : ''}" style="height: ${height}px"></div>`;
+        }
+
+        wifiItem.innerHTML = `
+                    <div class="wifi-icon">
+                        ${getWiFiIcon(quality, network.encryption)}
+                    </div>
+                    <div class="wifi-info">
+                        <div class="wifi-ssid">${escapeHtml(network.ssid)}</div>
+                        <div class="wifi-details">
+                            <div class="signal-strength">
+                                <div class="signal-bars">${signalBarsHtml}</div>
+                                <span>${quality}%</span>
+                            </div>
+                            <div class="wifi-channel">頻道 ${network.channel}</div>
+                            <div class="wifi-encryption">${network.encryption_str || '未知'}</div>
+                        </div>
+                    </div>
+                `;
+
+        wifiItem.addEventListener('click', () => {
+          selectWiFi(network);
+        });
+
+        wifiList.appendChild(wifiItem);
+      });
+    }
+
+    // 獲取WiFi圖示
+    function getWiFiIcon(quality, encryption) {
+      if (encryption === 0) { // WIFI_AUTH_OPEN
+        return '🌐';
+      }
+
+      if (quality >= 75) return '📶';
+      if (quality >= 50) return '📶';
+      if (quality >= 25) return '📶';
+      return '📶';
+    }
+
+    // 選擇WiFi
+    function selectWiFi(network) {
+      selectedWiFi = network.ssid;
+
+      // 更新選擇狀態
+      document.querySelectorAll('.wifi-item').forEach(item => {
+        item.classList.remove('selected');
+      });
+
+      event.currentTarget.classList.add('selected');
+
+      // 顯示連接表單
+      const connectionForm = document.getElementById('connection-form');
+      const selectedSsid = document.getElementById('selected-ssid');
+      const passwordInput = document.getElementById('wifi_password');
+
+      selectedSsid.textContent = network.ssid;
+      passwordInput.value = '';
+      passwordInput.type = 'password';
+      connectionForm.classList.add('show');
+
+      // 滾動到表單
+      connectionForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // 連接WiFi
+    async function connectToWiFi() {
+      const ssid = selectedWiFi;
+      const password = document.getElementById('wifi_password').value;
+
+      if (!ssid) {
+        alert('請選擇一個WiFi網路');
+        return;
+      }
+
+      if (!password && document.getElementById('selected-ssid').textContent !== '開放網路') {
+        alert('請輸入WiFi密碼');
+        return;
+      }
+
+      const statusDiv = document.getElementById('connection-status');
+      statusDiv.innerHTML = '<div class="loading">連接中</div>';
+      statusDiv.className = 'connection-status show status-connecting';
+
+      try {
+        const response = await fetch('/connect-wifi', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ssid, password })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // 開始檢查連接狀態
+          checkConnectionStatus(ssid);
+        } else {
+          statusDiv.innerHTML = `<p>❌ ${result.message || '連接失敗'}</p>`;
+          statusDiv.className = 'connection-status show status-error';
+        }
+      } catch (error) {
+        console.error('連接WiFi失敗:', error);
+        statusDiv.innerHTML = '<p>❌ 網路錯誤，請重試</p>';
+        statusDiv.className = 'connection-status show status-error';
+      }
+    }
+
+    // 檢查連接狀態
+    async function checkConnectionStatus(ssid) {
+      const statusDiv = document.getElementById('connection-status');
+      let attempts = 0;
+      const maxAttempts = 20; // 10秒鐘
+
+      const checkInterval = setInterval(async () => {
+        attempts++;
+
+        try {
+          const response = await fetch('/wifi-status');
+          const data = await response.json();
+
+          if (data.status === 3) { // WL_CONNECTED
+            clearInterval(checkInterval);
+            statusDiv.innerHTML = `
+                            <p>✅ 連接成功！</p>
+                            <p><strong>SSID:</strong> ${data.ssid}</p>
+                            <p><strong>IP地址:</strong> ${data.ip}</p>
+                            <p><strong>訊號強度:</strong> ${data.rssi} dBm</p>
+                        `;
+            statusDiv.className = 'connection-status show status-success';
+
+            // 更新當前連接狀態
+            loadCurrentConnection();
+
+            // 隱藏連接表單
+            document.getElementById('connection-form').classList.remove('show');
+
+            // 重新掃描WiFi列表
+            setTimeout(() => {
+              scanWiFi();
+            }, 1000);
+
+          } else if (attempts >= maxAttempts) {
+            clearInterval(checkInterval);
+            statusDiv.innerHTML = '<p>❌ 連接超時，請檢查密碼是否正確</p>';
+            statusDiv.className = 'connection-status show status-error';
+          }
+        } catch (error) {
+          console.error('檢查連接狀態失敗:', error);
+        }
+      }, 500);
+    }
+
+    // 斷開WiFi連接
+    async function disconnectWiFi() {
+      if (!confirm('確定要斷開WiFi連接嗎？')) {
+        return;
+      }
+
+      try {
+        // 停止WiFi
+        await fetch('/switch-network', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: 'mode=0' // 切換到AP模式
+        });
+
+        // 更新UI
+        document.getElementById('current-connection').style.display = 'none';
+        currentConnection = null;
+
+        // 重新掃描WiFi
+        setTimeout(() => {
+          scanWiFi();
+        }, 1000);
+
+      } catch (error) {
+        console.error('斷開連接失敗:', error);
+        alert('斷開連接失敗');
+      }
+    }
+
+    // HTML轉義
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // 儲存設定（保持原有功能）
+    async function saveConfiguration() {
+      console.log('開始儲存設定...');
+
+      // 收集表單數據
+      const formData = {
+        device_name: document.getElementById('device_name').value.trim(),
+        ap_ssid: document.getElementById('ap_ssid').value.trim(),
+        ap_password: "",  // 無密碼
+        wifi_ssid: currentConnection || document.getElementById('wifi_ssid').value.trim(),
+        wifi_password: "", // 密碼已通過connect-wifi設置
+        wifi_enabled: true,
+        eth_enabled: document.getElementById('eth_enabled').checked,
+        eth_dhcp: dhcpCheckbox.checked,
+        eth_static_ip: document.getElementById('eth_static_ip').value,
+        eth_gateway: document.getElementById('eth_gateway').value,
+        eth_subnet: document.getElementById('eth_subnet').value,
+        eth_dns1: document.getElementById('eth_dns1').value,
+        eth_dns2: "",  // 可選
+        network_mode: networkModeSelect.value
+      };
+
+      console.log('表單數據:', formData);
+
+      // 驗證固定IP
+      if (!dhcpCheckbox.checked) {
+        const staticIP = formData.eth_static_ip;
+        if (!validateIP(staticIP)) {
+          alert('請輸入有效的固定IP地址');
+          return;
+        }
+      }
+
+      try {
+        console.log('發送請求到 /save-config');
+        const response = await fetch('/save-config', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData)
+        });
+
+        console.log('收到回應，狀態:', response.status);
+        const result = await response.json();
+        console.log('回應結果:', result);
+
+        if (result.success) {
+          console.log('設定成功，顯示完成步驟');
+          // 顯示完成步驟
+          showStep(3);
+
+          // 如果是首次設定，啟動完成流程
+          if (isFirstSetup) {
+            startCountdown();
+          } else {
+            // 非首次設定，提示重新啟動
+            document.getElementById('countdown').innerHTML =
+              '<p>設定已儲存，請手動重新啟動設備或等待幾分鐘後重新訪問。</p>';
+          }
+        } else {
+          alert('儲存失敗：' + result.message);
+        }
+      } catch (error) {
+        console.error('儲存設定時發生錯誤:', error);
+        alert('網路錯誤：' + error.message);
+      }
+    }
+
+    // 首次設定完成倒數
+    function startCountdown() {
+      let countdown = 3;
+      const countdownElement = document.getElementById('countdown-number');
+      const countdownInterval = setInterval(() => {
+        countdown--;
+        countdownElement.textContent = countdown;
+
+        if (countdown <= 0) {
+          clearInterval(countdownInterval);
+          completeSetup();
+        }
+      }, 1000);
+    }
+
+    // 完成首次設定
+    async function completeSetup() {
+      console.log('完成首次設定');
+      try {
+        await fetch('/setup-complete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: 'complete=true'
+        });
+
+        console.log('設定完成，等待重啟...');
+        // 等待設備重啟
+        setTimeout(() => {
+          window.location.href = 'http://192.168.4.1/';
+        }, 5000);
+
+      } catch (error) {
+        console.log('設定完成，設備將重新啟動');
+        setTimeout(() => {
+          window.location.href = 'http://192.168.4.1/';
+        }, 5000);
+      }
+    }
+
+    // IP地址驗證
+    function validateIP(ip) {
+      const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/;
+      if (!ipPattern.test(ip)) return false;
+
+      const parts = ip.split('.');
+      for (let part of parts) {
+        const num = parseInt(part);
+        if (num < 0 || num > 255) return false;
+      }
+      return true;
+    }
+
+    // 從伺服器獲取設定值
+    async function loadConfigFromServer() {
+      try {
+        const response = await fetch('/status');
+        const data = await response.json();
+
+        // 設定設備名稱
+        if (data.device_name) {
+          document.getElementById('device_name').value = data.device_name;
+        }
+
+        // 設定AP SSID
+        if (data.ap_ssid) {
+          document.getElementById('ap_ssid').value = data.ap_ssid;
+        }
+
+        // 更新首次設定狀態
+        isFirstSetup = data.first_setup === true || data.first_setup === 'true';
+
+        console.log('從伺服器載入設定完成, isFirstSetup:', isFirstSetup);
+
+      } catch (error) {
+        console.error('從伺服器載入設定失敗:', error);
+      }
+    }
+
+    // 切換密碼顯示/隱藏
+    function togglePasswordVisibility() {
+      const passwordInput = document.getElementById('wifi_password');
+      const showBtn = document.getElementById('show-password');
+
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        showBtn.textContent = '隱藏';
+      } else {
+        passwordInput.type = 'password';
+        showBtn.textContent = '顯示';
+      }
+    }
+
+    // 初始化
+    window.onload = async function () {
+      console.log('頁面載入完成');
+
+      // 從伺服器載入設定
+      await loadConfigFromServer();
+
+      // 初始化UI元素
+      toggleStaticFields();
+      updateModeDescription();
+
+      // 事件監聽器
+      dhcpCheckbox.addEventListener('change', toggleStaticFields);
+      networkModeSelect.addEventListener('change', updateModeDescription);
+
+      // 步驟按鈕事件監聽
+      document.getElementById('next-step-1').addEventListener('click', () => nextStep(2));
+      document.getElementById('prev-step-2').addEventListener('click', () => prevStep(1));
+      document.getElementById('save-config-btn').addEventListener('click', saveConfiguration);
+
+      // WiFi相關按鈕事件監聽
+      document.getElementById('scan-wifi-btn').addEventListener('click', scanWiFi);
+      document.getElementById('connect-btn').addEventListener('click', connectToWiFi);
+      document.getElementById('cancel-connect').addEventListener('click', () => {
+        document.getElementById('connection-form').classList.remove('show');
+        selectedWiFi = null;
+        document.querySelectorAll('.wifi-item').forEach(item => {
+          item.classList.remove('selected');
+        });
+      });
+      document.getElementById('show-password').addEventListener('click', togglePasswordVisibility);
+      document.getElementById('disconnect-btn').addEventListener('click', disconnectWiFi);
+
+      // 顯示第一步
+      console.log('顯示步驟1, isFirstSetup:', isFirstSetup);
+      showStep(1);
+
+      // 自動刷新WiFi列表
+      wifiScanInterval = setInterval(() => {
+        if (currentStep === 2) {
+          scanWiFi();
+        }
+      }, 30000); // 每30秒刷新一次
+    };
+
+    // 清理定時器
+    window.addEventListener('beforeunload', () => {
+      if (wifiScanInterval) {
+        clearInterval(wifiScanInterval);
+      }
+    });
+  </script>
+</body>
+
+</html>

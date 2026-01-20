@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 首次設定</title>
+  <style>
+    :root {
+      --primary: #667eea;
+      --secondary: #764ba2;
+      --success: #28a745;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .welcome-container {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      max-width: 600px;
+      width: 100%;
+      animation: fadeIn 0.5s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .welcome-icon {
+      font-size: 4em;
+      margin-bottom: 20px;
+      color: var(--primary);
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 2.2em;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 1.1em;
+      line-height: 1.6;
+    }
+
+    .setup-steps {
+      text-align: left;
+      background: #f8f9fa;
+      padding: 25px;
+      border-radius: 12px;
+      margin: 30px 0;
+      border-left: 4px solid var(--primary);
+    }
+
+    .setup-steps ol {
+      padding-left: 20px;
+      margin-bottom: 20px;
+    }
+
+    .setup-steps li {
+      margin-bottom: 15px;
+      color: #555;
+      line-height: 1.5;
+    }
+
+    .setup-steps strong {
+      color: #333;
+    }
+
+    .device-info {
+      background: #e9f7fe;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 25px;
+      border: 1px solid #b3e0ff;
+    }
+
+    .device-info p {
+      margin: 8px 0;
+      color: #0066cc;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: white;
+      padding: 18px 35px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.2em;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      transition: all 0.3s ease;
+      margin-top: 10px;
+      width: 100%;
+      max-width: 300px;
+    }
+
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-icon {
+      font-size: 1.3em;
+    }
+
+    .note {
+      color: #666;
+      font-size: 0.9em;
+      margin-top: 25px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 480px) {
+      .welcome-container {
+        padding: 25px;
+      }
+
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="welcome-container">
+    <div class="welcome-icon">🎯</div>
+    <h1>歡迎使用 ESP32 網路伺服器</h1>
+    <p class="subtitle">首次使用請進行網路設定以啟動完整功能</p>
+
+    <div class="device-info" id="device-info">
+      <p><strong>設備名稱:</strong> 載入中...</p>
+      <p><strong>AP網路:</strong> 載入中...</p>
+      <p><strong>訪問地址:</strong> 192.168.4.1</p>
+    </div>
+
+    <div class="setup-steps">
+      <h3 style="color: var(--primary); margin-bottom: 15px;">設定步驟：</h3>
+      <ol>
+        <li>請確保您已連接到此ESP32的WiFi熱點</li>
+        <li>點擊下方按鈕進入網路設定頁面</li>
+        <li>設定您的WiFi網路名稱和密碼</li>
+        <li>選擇合適的網路運作模式</li>
+        <li>儲存設定，設備將自動重新啟動</li>
+        <li>重新連接後，訪問設備的新IP地址</li>
+      </ol>
+    </div>
+
+    <button onclick="startSetup()" class="btn">
+      <span class="btn-icon">🔧</span> 開始設定
+    </button>
+
+    <p class="note">
+      提示：設定完成後，建議將設備連接到穩定的網路環境<br>
+      以獲得最佳的連線體驗和伺服器效能
+    </p>
+  </div>
+
+  <script>
+    // 獲取設備資訊
+    async function loadDeviceInfo() {
+      try {
+        const response = await fetch('/status');
+        const data = await response.json();
+
+        document.getElementById('device-info').innerHTML = `
+                    <p><strong>設備名稱:</strong> ${data.device_name || 'ESP32-Server'}</p>
+                    <p><strong>AP網路:</strong> ${data.ap_ssid || 'ESP32_XXXX'}</p>
+                    <p><strong>訪問地址:</strong> ${data.active_ip}</p>
+                `;
+
+      } catch (error) {
+        console.error('載入設備資訊失敗:', error);
+      }
+    }
+
+    // 開始設定
+    function startSetup() {
+      window.location.href = '/network-config';
+    }
+
+    // 頁面載入時獲取設備資訊
+    window.onload = function () {
+      loadDeviceInfo();
+    };
+  </script>
+</body>
+
+</html>
