@@ -596,6 +596,8 @@ void initWebServer()
   webServer.on("/status", HTTP_GET, handleGetStatus);
   webServer.on("/switch-network", HTTP_POST, handleSwitchNetwork);
   webServer.on("/restart", HTTP_POST, handleRestart);
+  // 新增網路狀態路由
+  webServer.on("/network-status", HTTP_GET, handleNetworkStatus);
 
   // 新增WiFi相關路由
   webServer.on("/scan-wifi", HTTP_GET, handleScanWiFi);
@@ -1255,30 +1257,26 @@ void handleConnectWiFi()
       WiFi.mode(WIFI_STA);
       WiFi.begin(ssid.c_str(), password.c_str());
 
-      // 立即回覆，告訴客戶端已開始連接
-      StaticJsonDocument<200> responseDoc;
-      responseDoc["success"] = true;
-      responseDoc["message"] = "開始連接WiFi: " + ssid;
-
-      String response;
-      serializeJson(responseDoc, response);
-      webServer.send(200, "application/json", response);
-
-      // 在背景檢查連接狀態
+      // 等待連接，最多15秒
       unsigned long startTime = millis();
       bool connected = false;
+      String ipAddress = "";
 
-      while (millis() - startTime < 10000)
-      { // 等待10秒
+      while (millis() - startTime < 15000)
+      {
+        delay(500);
+        Serial.print(".");
+
         if (WiFi.status() == WL_CONNECTED)
         {
           connected = true;
           wifi_connected = true;
           wifiIP = WiFi.localIP();
+          ipAddress = wifiIP.toString();
 
           Serial.println("\nWiFi連接成功!");
           Serial.print("IP地址: ");
-          Serial.println(wifiIP);
+          Serial.println(ipAddress);
 
           // 如果AP模式正在運行，停止它
           if (ap_mode_active)
@@ -1290,18 +1288,40 @@ void handleConnectWiFi()
           saveConfig();
           break;
         }
-        delay(500);
-        Serial.print(".");
       }
 
-      if (!connected)
+      // 建立JSON回應
+      StaticJsonDocument<300> responseDoc;
+
+      if (connected)
       {
-        Serial.println("\nWiFi連接失敗");
+        responseDoc["success"] = true;
+        responseDoc["message"] = "WiFi連接成功";
+        responseDoc["ssid"] = ssid;
+        responseDoc["ip"] = ipAddress;
+        responseDoc["rssi"] = WiFi.RSSI();
+        responseDoc["status"] = "connected";
+      }
+      else
+      {
+        responseDoc["success"] = false;
+        responseDoc["message"] = "WiFi連接失敗";
+        responseDoc["status"] = "failed";
+
         // 連接失敗，回到AP模式
         if (!ap_mode_active)
         {
           startAPMode();
         }
+      }
+
+      String response;
+      serializeJson(responseDoc, response);
+      webServer.send(200, "application/json", response);
+
+      if (!connected)
+      {
+        Serial.println("\nWiFi連接失敗");
       }
     }
     else
@@ -1352,6 +1372,40 @@ void handleWiFiStatus()
   default:
     doc["status_str"] = "未知狀態";
   }
+
+  String response;
+  serializeJson(doc, response);
+  webServer.send(200, "application/json", response);
+}
+
+//================新增：取得網路狀態===================
+void handleNetworkStatus()
+{
+  StaticJsonDocument<512> doc;
+
+  doc["wifi_connected"] = wifi_connected;
+  if (wifi_connected)
+  {
+    doc["wifi_ip"] = wifiIP.toString();
+    doc["wifi_ssid"] = WiFi.SSID();
+    doc["wifi_rssi"] = WiFi.RSSI();
+  }
+
+  doc["eth_connected"] = eth_connected;
+  if (eth_connected)
+  {
+    doc["eth_ip"] = ethIP.toString();
+  }
+
+  doc["ap_active"] = ap_mode_active;
+  if (ap_mode_active)
+  {
+    doc["ap_ssid"] = ap_ssid;
+    doc["ap_ip"] = "192.168.4.1";
+  }
+
+  doc["network_mode"] = getModeString(currentMode);
+  doc["active_ip"] = getActiveIP();
 
   String response;
   serializeJson(doc, response);

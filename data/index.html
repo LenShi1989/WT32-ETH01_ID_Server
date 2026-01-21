@@ -1,365 +1,402 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-TW">
-
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ESP32 網路伺服器控制台</title>
-  <style>
-    :root {
-      --primary: #667eea;
-      --secondary: #764ba2;
-      --success: #28a745;
-      --danger: #dc3545;
-      --warning: #ffc107;
-      --info: #17a2b8;
-      --light: #f8f9fa;
-      --dark: #343a40;
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-      min-height: 100vh;
-      padding: 20px;
-      color: #333;
-    }
-
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .header {
-      text-align: center;
-      margin-bottom: 30px;
-      color: white;
-      padding: 20px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 15px;
-    }
-
-    .header h1 {
-      font-size: 2.5em;
-      margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 15px;
-    }
-
-    .header p {
-      font-size: 1.2em;
-      opacity: 0.9;
-    }
-
-    .dashboard {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-      gap: 25px;
-      margin-bottom: 30px;
-    }
-
-    .card {
-      background: rgba(255, 255, 255, 0.95);
-      border-radius: 15px;
-      padding: 25px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-      transition: all 0.3s ease;
-    }
-
-    .card:hover {
-      transform: translateY(-5px);
-    }
-
-    .card h2 {
-      color: var(--dark);
-      margin-bottom: 20px;
-      padding-bottom: 15px;
-      border-bottom: 2px solid var(--primary);
-      font-size: 1.4em;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .status-grid {
-      display: grid;
-      gap: 12px;
-    }
-
-    .status-item {
-      display: flex;
-      justify-content: space-between;
-      padding: 10px 15px;
-      background: var(--light);
-      border-radius: 8px;
-      border-left: 4px solid var(--primary);
-    }
-
-    .status-label {
-      font-weight: 600;
-      color: var(--dark);
-    }
-
-    .status-value {
-      font-family: 'Courier New', monospace;
-      font-weight: 600;
-    }
-
-    .btn-group {
-      display: grid;
-      gap: 15px;
-      margin-top: 20px;
-    }
-
-    .btn {
-      padding: 15px;
-      text-align: center;
-      text-decoration: none;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 1.1em;
-      transition: all 0.3s ease;
-      cursor: pointer;
-      border: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-      color: white;
-    }
-
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
-    }
-
-    .btn-secondary {
-      background: var(--secondary);
-      color: white;
-    }
-
-    .btn-warning {
-      background: var(--warning);
-      color: var(--dark);
-    }
-
-    .info-box {
-      background: var(--light);
-      padding: 15px;
-      border-radius: 8px;
-      margin-top: 15px;
-      border: 1px solid rgba(0, 0, 0, 0.1);
-    }
-
-    .connection-status {
-      padding: 15px;
-      background: var(--light);
-      border-radius: 8px;
-      margin-top: 20px;
-      line-height: 1.6;
-      border: 1px solid rgba(0, 0, 0, 0.1);
-    }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 15px;
-      margin-top: 20px;
-    }
-
-    .stat-box {
-      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-      padding: 15px;
-      border-radius: 8px;
-      color: white;
-      text-align: center;
-    }
-
-    .stat-value {
-      font-size: 1.8em;
-      font-weight: bold;
-      margin: 5px 0;
-    }
-
-    .stat-label {
-      font-size: 0.9em;
-      opacity: 0.9;
-    }
-
-    @media (max-width: 768px) {
-      .dashboard {
-        grid-template-columns: 1fr;
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ESP32 網路伺服器控制台</title>
+    <style>
+      :root {
+        --primary: #667eea;
+        --secondary: #764ba2;
+        --success: #28a745;
+        --danger: #dc3545;
+        --warning: #ffc107;
+        --info: #17a2b8;
+        --light: #f8f9fa;
+        --dark: #343a40;
       }
-    }
-  </style>
-</head>
 
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>🌐 ESP32 網路伺服器</h1>
-      <p id="active-ip">載入中...</p>
-    </div>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-    <div class="dashboard">
-      <div class="card">
-        <h2>📊 系統狀態</h2>
-        <div id="status-content" class="status-grid">
-          <div class="status-item">
-            <span class="status-label">載入中...</span>
-            <span class="status-value">請稍候</span>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(
+          135deg,
+          var(--primary) 0%,
+          var(--secondary) 100%
+        );
+        min-height: 100vh;
+        padding: 20px;
+        color: #333;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+        color: white;
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+      }
+
+      .header h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 15px;
+      }
+
+      .header p {
+        font-size: 1.2em;
+        opacity: 0.9;
+      }
+
+      .dashboard {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 25px;
+        margin-bottom: 30px;
+      }
+
+      .card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+      }
+
+      .card:hover {
+        transform: translateY(-5px);
+      }
+
+      .card h2 {
+        color: var(--dark);
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid var(--primary);
+        font-size: 1.4em;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .status-grid {
+        display: grid;
+        gap: 12px;
+      }
+
+      .status-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 15px;
+        background: var(--light);
+        border-radius: 8px;
+        border-left: 4px solid var(--primary);
+      }
+
+      .status-label {
+        font-weight: 600;
+        color: var(--dark);
+      }
+
+      .status-value {
+        font-family: "Courier New", monospace;
+        font-weight: 600;
+      }
+
+      .btn-group {
+        display: grid;
+        gap: 15px;
+        margin-top: 20px;
+      }
+
+      .btn {
+        padding: 15px;
+        text-align: center;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 1.1em;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      .btn-primary {
+        background: linear-gradient(
+          135deg,
+          var(--primary) 0%,
+          var(--secondary) 100%
+        );
+        color: white;
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+      }
+
+      .btn-secondary {
+        background: var(--secondary);
+        color: white;
+      }
+
+      .btn-warning {
+        background: var(--warning);
+        color: var(--dark);
+      }
+
+      .info-box {
+        background: var(--light);
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 15px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+      }
+
+      .connection-status {
+        padding: 15px;
+        background: var(--light);
+        border-radius: 8px;
+        margin-top: 20px;
+        line-height: 1.6;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 15px;
+        margin-top: 20px;
+      }
+
+      .stat-box {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        padding: 15px;
+        border-radius: 8px;
+        color: white;
+        text-align: center;
+      }
+
+      .stat-value {
+        font-size: 1.8em;
+        font-weight: bold;
+        margin: 5px 0;
+      }
+
+      .stat-label {
+        font-size: 0.9em;
+        opacity: 0.9;
+      }
+
+      @media (max-width: 768px) {
+        .dashboard {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🌐 ESP32 網路伺服器</h1>
+        <p id="active-ip">載入中...</p>
+      </div>
+
+      <div class="dashboard">
+        <div class="card">
+          <h2>📊 系統狀態</h2>
+          <div id="status-content" class="status-grid">
+            <div class="status-item">
+              <span class="status-label">載入中...</span>
+              <span class="status-value">請稍候</span>
+              <span class="status-label">WiFi狀態</span>
+              <span class="status-value" id="wifi-status">
+                <span id="wifi-connection-status">未連接</span>
+                <span
+                  id="wifi-ip-display"
+                  style="
+                    display: none;
+                    margin-left: 10px;
+                    font-size: 0.9em;
+                    color: #28a745;
+                  "
+                ></span>
+              </span>
+            </div>
+          </div>
+
+          <div class="connection-status" id="connection-status">
+            載入連接狀態...
+          </div>
+
+          <div class="stats">
+            <div class="stat-box">
+              <div class="stat-value" id="client-count">0</div>
+              <div class="stat-label">連線客戶端</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value" id="uptime">0</div>
+              <div class="stat-label">運行時間</div>
+            </div>
           </div>
         </div>
 
-        <div class="connection-status" id="connection-status">
-          載入連接狀態...
-        </div>
-
-        <div class="stats">
-          <div class="stat-box">
-            <div class="stat-value" id="client-count">0</div>
-            <div class="stat-label">連線客戶端</div>
+        <div class="card">
+          <h2>⚙️ 系統控制</h2>
+          <div class="btn-group">
+            <a href="/network-config" class="btn btn-primary"> 🔧 網路設定 </a>
+            <button onclick="restartSystem()" class="btn btn-warning">
+              🔄 重啟系統
+            </button>
           </div>
-          <div class="stat-box">
-            <div class="stat-value" id="uptime">0</div>
-            <div class="stat-label">運行時間</div>
+
+          <h2 style="margin-top: 25px">📈 即時監控</h2>
+          <div class="btn-group">
+            <button onclick="startMonitoring()" class="btn btn-primary">
+              ▶️ 開始監控
+            </button>
+            <button onclick="stopMonitoring()" class="btn btn-secondary">
+              ⏸️ 停止監控
+            </button>
+          </div>
+
+          <div class="info-box">
+            <p><strong>TCP伺服器:</strong> Port 2024</p>
+            <p><strong>Web介面:</strong> Port 80</p>
           </div>
         </div>
       </div>
-
-      <div class="card">
-        <h2>⚙️ 系統控制</h2>
-        <div class="btn-group">
-          <a href="/network-config" class="btn btn-primary">
-            🔧 網路設定
-          </a>
-          <button onclick="restartSystem()" class="btn btn-warning">
-            🔄 重啟系統
-          </button>
-        </div>
-
-        <h2 style="margin-top: 25px;">📈 即時監控</h2>
-        <div class="btn-group">
-          <button onclick="startMonitoring()" class="btn btn-primary">
-            ▶️ 開始監控
-          </button>
-          <button onclick="stopMonitoring()" class="btn btn-secondary">
-            ⏸️ 停止監控
-          </button>
-        </div>
-
-        <div class="info-box">
-          <p><strong>TCP伺服器:</strong> Port 2024</p>
-          <p><strong>Web介面:</strong> Port 80</p>
-        </div>
-      </div>
     </div>
-  </div>
 
-  <script>
-    let monitorInterval;
-    let startTime = Date.now();
+    <script>
+      let monitorInterval;
+      let startTime = Date.now();
 
-    // 更新狀態
-    async function updateStatus() {
-      try {
-        const response = await fetch('/status');
-        const data = await response.json();
+      // 更新狀態
+      async function updateStatus() {
+        try {
+          const response = await fetch("/status");
+          const data = await response.json();
 
-        // 更新狀態內容
-        const statusHTML = `
+          // 更新狀態內容
+          const statusHTML = `
                     <div class="status-item">
                         <span class="status-label">網路模式</span>
                         <span class="status-value">${data.network_mode}</span>
                     </div>
                     <div class="status-item">
                         <span class="status-label">AP模式</span>
-                        <span class="status-value">${data.ap_active ? '✅ 運行中' : '❌ 已停止'}</span>
+                        <span class="status-value">${data.ap_active ? "✅ 運行中" : "❌ 已停止"}</span>
                     </div>
                     <div class="status-item">
                         <span class="status-label">乙太網</span>
-                        <span class="status-value">${data.eth_connected ? '✅ 已連接' : '❌ 未連接'}</span>
+                        <span class="status-value">${data.eth_connected ? "✅ 已連接" : "❌ 未連接"}</span>
                     </div>
                     <div class="status-item">
                         <span class="status-label">WiFi</span>
-                        <span class="status-value">${data.wifi_connected ? '✅ 已連接' : '❌ 未連接'}</span>
+                        <span class="status-value">${data.wifi_connected ? "✅ 已連接" : "❌ 未連接"}</span>
                     </div>
                 `;
 
-        document.getElementById('status-content').innerHTML = statusHTML;
-        document.getElementById('connection-status').innerHTML = data.connection_status;
-        document.getElementById('active-ip').textContent = `訪問地址: http://${data.active_ip}`;
-        document.getElementById('client-count').textContent = data.client_count;
+          document.getElementById("status-content").innerHTML = statusHTML;
+          document.getElementById("connection-status").innerHTML =
+            data.connection_status;
+          document.getElementById("active-ip").textContent =
+            `訪問地址: http://${data.active_ip}`;
+          document.getElementById("client-count").textContent =
+            data.client_count;
 
-        // 更新運行時間
-        const uptime = Math.floor((Date.now() - startTime) / 1000);
-        document.getElementById('uptime').textContent = `${uptime}秒`;
+          // 更新運行時間
+          const uptime = Math.floor((Date.now() - startTime) / 1000);
+          document.getElementById("uptime").textContent = `${uptime}秒`;
 
-      } catch (error) {
-        console.error('獲取狀態失敗:', error);
-        document.getElementById('connection-status').innerHTML =
-          '❌ 無法獲取狀態資訊，請檢查連接';
-      }
-    }
+          // 更新WiFi狀態顯示
+          const wifiStatus = document.getElementById("wifi-connection-status");
+          const wifiIpDisplay = document.getElementById("wifi-ip-display");
 
-    // 開始監控
-    function startMonitoring() {
-      if (monitorInterval) clearInterval(monitorInterval);
-      monitorInterval = setInterval(updateStatus, 2000);
-      updateStatus();
-      alert('監控已開始，每2秒更新一次狀態');
-    }
+          if (data.wifi_connected) {
+            wifiStatus.textContent = "✅ 已連接";
+            wifiIpDisplay.textContent = data.wifi_ip;
+            wifiIpDisplay.style.display = "inline";
 
-    // 停止監控
-    function stopMonitoring() {
-      if (monitorInterval) {
-        clearInterval(monitorInterval);
-        monitorInterval = null;
-        alert('監控已停止');
-      }
-    }
-
-    // 重啟系統
-    async function restartSystem() {
-      if (confirm('確定要重新啟動系統嗎？這會中斷所有連線。')) {
-        try {
-          const response = await fetch('/restart', {
-            method: 'POST'
-          });
-
-          const result = await response.json();
-          alert(result.message);
-
-          setTimeout(() => {
-            location.reload();
-          }, 3000);
-
+            // 如果有IP，更新主標題
+            if (data.active_ip && data.active_ip !== "未連接") {
+              document.getElementById("active-ip").textContent =
+                `訪問地址: http://${data.active_ip} (WiFi)`;
+            }
+          } else {
+            wifiStatus.textContent = "❌ 未連接";
+            wifiIpDisplay.style.display = "none";
+          }
         } catch (error) {
-          alert('重啟指令已發送，系統將重新啟動...');
-          setTimeout(() => {
-            location.reload();
-          }, 3000);
+          console.error("獲取狀態失敗:", error);
+          document.getElementById("connection-status").innerHTML =
+            "❌ 無法獲取狀態資訊，請檢查連接";
         }
       }
-    }
 
-    // 頁面載入時自動開始監控
-    window.onload = function () {
-      startMonitoring();
-    };
-  </script>
-</body>
+      // 開始監控
+      function startMonitoring() {
+        if (monitorInterval) clearInterval(monitorInterval);
+        monitorInterval = setInterval(updateStatus, 2000);
+        updateStatus();
+        alert("監控已開始，每2秒更新一次狀態");
+      }
 
+      // 停止監控
+      function stopMonitoring() {
+        if (monitorInterval) {
+          clearInterval(monitorInterval);
+          monitorInterval = null;
+          alert("監控已停止");
+        }
+      }
+
+      // 重啟系統
+      async function restartSystem() {
+        if (confirm("確定要重新啟動系統嗎？這會中斷所有連線。")) {
+          try {
+            const response = await fetch("/restart", {
+              method: "POST",
+            });
+
+            const result = await response.json();
+            alert(result.message);
+
+            setTimeout(() => {
+              location.reload();
+            }, 3000);
+          } catch (error) {
+            alert("重啟指令已發送，系統將重新啟動...");
+            setTimeout(() => {
+              location.reload();
+            }, 3000);
+          }
+        }
+      }
+
+      // 頁面載入時自動開始監控
+      window.onload = function () {
+        startMonitoring();
+      };
+    </script>
+  </body>
 </html>
