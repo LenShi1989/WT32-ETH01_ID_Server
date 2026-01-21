@@ -9,6 +9,8 @@
 #include <WebServer.h>
 #include <ArduinoJson.h>
 #include "SPIFFS.h"
+#include "soc/soc.h"          //低電壓強制運行
+#include "soc/rtc_cntl_reg.h" //低電壓強制運行
 
 //================網路模式定義===================
 enum NetworkMode
@@ -1583,9 +1585,10 @@ void PerDateService()
 /*============================================主程式============================================*/
 void setup()
 {
+  // 低電壓強制運行
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
   Serial.begin(115200);
   delay(1000); // 等待串口穩定
-
   Serial.println("\n\n=== ESP32 網路伺服器啟動 ===");
   Serial.println("初始化 SPIFFS...");
 
