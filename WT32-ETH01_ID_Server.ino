@@ -35,6 +35,16 @@ static String ap_password = "";
 
 WebServer webServer(80); // Web Server 使用 port 80
 
+// 流量統計
+struct TrafficStats
+{
+  unsigned long totalPackets;
+  unsigned long totalBytes;
+  unsigned long lastReset;
+};
+
+TrafficStats trafficStats = {0, 0, 0};
+
 //================TCP伺服器相關宣告===================
 #define MAX_SRV_CLIENTS 256              // 最大同時聯接數
 WiFiServer tcpServer(2024);              // TCP伺服器 port 2024
@@ -90,11 +100,11 @@ bool Light = HIGH;
 
 //================函數宣告===================
 void Working_Light();
-void Server_monitor(uint8_t var);
+void Server_monitor(uint8_t var, int clientIndex = -1); // 修改這裡，添加默認參數
 void New_Client();
 void Client_Recv_Data();
-bool compareID();
-void data_process();
+bool compareID(int clientIndex);    // 修改這裡，添加參數
+void data_process(int clientIndex); // 修改這裡，添加參數
 void PerDateService();
 
 // Web Server 函數
@@ -1430,7 +1440,7 @@ void Working_Light()
 }
 
 //============================================伺服器資訊監視============================================
-void Server_monitor(uint8_t var)
+void Server_monitor(uint8_t var, int clientIndex) // 修改這裡
 {
   if (Server_Mode == 0)
   {
@@ -1439,17 +1449,23 @@ void Server_monitor(uint8_t var)
     case 0:
       Serial.println("");
       Serial.print("New_connent:");
-      Serial.print(client[ncfc].remoteIP());
-      Serial.print(":");
-      Serial.println(client[ncfc].remotePort());
+      if (clientIndex >= 0 && clientIndex < MAX_SRV_CLIENTS && client[clientIndex])
+      {
+        Serial.print(client[clientIndex].remoteIP());
+        Serial.print(":");
+        Serial.println(client[clientIndex].remotePort());
+      }
       Serial.println("");
       break;
     case 1:
       Serial.println("");
       Serial.println("#################################################################");
-      Serial.print(client[Client_Number].remoteIP());
-      Serial.print(":");
-      Serial.println(client[Client_Number].remotePort());
+      if (clientIndex >= 0 && clientIndex < MAX_SRV_CLIENTS && client[clientIndex])
+      {
+        Serial.print(client[clientIndex].remoteIP());
+        Serial.print(":");
+        Serial.println(client[clientIndex].remotePort());
+      }
       Serial.println("ID error: not the object of the service");
       for (int i = 0; i < 64; i++)
       {
@@ -1465,14 +1481,20 @@ void Server_monitor(uint8_t var)
       Serial.printf("DATA-Size: %d \n", data_len);
       Serial.println("#################################################################");
       Serial.printf("Source ID: %2X \n", data[30]);
-      Serial.print(client_room[data[30]].remoteIP());
-      Serial.print(":");
-      Serial.println(client_room[data[30]].remotePort());
+      if (data[30] < MAX_SRV_CLIENTS && client_room[data[30]])
+      {
+        Serial.print(client_room[data[30]].remoteIP());
+        Serial.print(":");
+        Serial.println(client_room[data[30]].remotePort());
+      }
       Serial.println("   To");
       Serial.printf("Destination ID: %2X \n", data[62]);
-      Serial.print(client_room[data[62]].remoteIP());
-      Serial.print(":");
-      Serial.println(client_room[data[62]].remotePort());
+      if (data[62] < MAX_SRV_CLIENTS && client_room[data[62]])
+      {
+        Serial.print(client_room[data[62]].remoteIP());
+        Serial.print(":");
+        Serial.println(client_room[data[62]].remotePort());
+      }
       for (int i = 64; i < 75; i++)
       {
         Serial.printf("%2X ,", data[i]);
@@ -1498,7 +1520,7 @@ void New_Client()
     {
       client[ncfc].stop();
       client[ncfc] = tcpServer.available();
-      Server_monitor(0);
+      Server_monitor(0, ncfc); // 傳遞客戶端索引
     }
     if (ncfc < MAX_SRV_CLIENTS - 1)
       ncfc++;
@@ -1510,43 +1532,55 @@ void New_Client()
 //============================================收客戶端的資料============================================
 void Client_Recv_Data()
 {
-  for (Client_Number = 0; Client_Number < MAX_SRV_CLIENTS; Client_Number++)
+  for (int i = 0; i < MAX_SRV_CLIENTS; i++) // 使用局部變數i
   {
     yield();
-    if (!client[Client_Number] || !client[Client_Number].connected())
+    if (!client[i] || !client[i].connected())
       continue;
-    if (client[Client_Number].available())
+
+    if (client[i].available())
     {
       data_len = 0;
-      while (client[Client_Number].available())
+
+      // 添加超時保護
+      unsigned long startTime = millis();
+
+      while (client[i].available() && data_len < 1460)
       {
-        data[data_len] = client[Client_Number].read();
+        data[data_len] = client[i].read();
         data_len++;
-        if (data_len >= 1460)
-        {
+
+        // 添加超時檢查，避免阻塞
+        if (millis() - startTime > 100)
+        { // 最多100ms讀取時間
+          Serial.printf("客戶端 %d 讀取超時\n", i);
           break;
         }
         yield();
       }
-      if (compareID() == false)
+
+      if (data_len > 0)
       {
-        data_process();
+        if (!compareID(i)) // 傳遞客戶端索引
+        {
+          data_process(i); // 傳遞客戶端索引
+        }
       }
     }
   }
 }
 
 //============================================Data_ID_Name比對============================================
-bool compareID()
+bool compareID(int clientIndex) // 修改這裡，添加參數
 {
   bool compare_flag = false;
   for (int compare_c = 0; compare_c < sizeof(ID_Name); compare_c++)
   {
     if (data[compare_c] != ID_Name[compare_c] || data[compare_c + 32] != ID_Name[compare_c])
     {
-      Server_monitor(1);
-      client[Client_Number].stop();
-      memset(data, NULL, sizeof(data));
+      Server_monitor(1, clientIndex); // 傳遞clientIndex
+      client[clientIndex].stop();
+      memset(data, 0, sizeof(data));
       compare_flag = true;
       break;
     }
@@ -1555,25 +1589,106 @@ bool compareID()
 }
 
 //============================================對資料做處理============================================
-void data_process()
+void data_process(int clientIndex) // 修改這裡，添加參數
 {
   uint8_t ipsd = data[30];
   uint8_t ipdd = data[62];
-  IPAddress IP = client[Client_Number].remoteIP();
-  uint8_t H_Port = client[Client_Number].remotePort() / 256;
-  uint8_t L_port = client[Client_Number].remotePort() % 256;
 
-  ID_Information_list[ipsd][0] = IP[0];
-  ID_Information_list[ipsd][1] = IP[1];
-  ID_Information_list[ipsd][2] = IP[2];
-  ID_Information_list[ipsd][3] = IP[3];
+  // 檢查ID範圍
+  if (ipsd >= MAX_SRV_CLIENTS || ipdd >= MAX_SRV_CLIENTS)
+  {
+    Serial.printf("ID範圍錯誤: ipsd=%d, ipdd=%d\n", ipsd, ipdd);
+    client[clientIndex].stop();
+    memset(data, 0, sizeof(data));
+    return;
+  }
+
+  IPAddress IP = client[clientIndex].remoteIP();
+  uint8_t H_Port = client[clientIndex].remotePort() / 256;
+  uint8_t L_port = client[clientIndex].remotePort() % 256;
+
+  // 使用正確的方式儲存IP地址
+  IPAddress remoteIP = client[clientIndex].remoteIP();
+  ID_Information_list[ipsd][0] = remoteIP[0];
+  ID_Information_list[ipsd][1] = remoteIP[1];
+  ID_Information_list[ipsd][2] = remoteIP[2];
+  ID_Information_list[ipsd][3] = remoteIP[3];
   ID_Information_list[ipsd][4] = H_Port;
   ID_Information_list[ipsd][5] = L_port;
-  client_room[ipsd] = client[Client_Number];
 
-  Server_monitor(2);
-  client_room[ipdd].write(data, data_len);
-  memset(data, NULL, sizeof(data));
+  client_room[ipsd] = client[clientIndex];
+
+  Server_monitor(2, clientIndex);
+
+  // 檢查目標客戶端是否存在且連接
+  if (client_room[ipdd] && client_room[ipdd].connected())
+  {
+    client_room[ipdd].write(data, data_len);
+  }
+  else
+  {
+    Serial.printf("目標客戶端 %d 未連接\n", ipdd);
+  }
+
+  memset(data, 0, sizeof(data));
+
+  // 更新流量統計
+  trafficStats.totalPackets++;
+  trafficStats.totalBytes += data_len;
+
+  // 每100個封包顯示一次統計
+  if (trafficStats.totalPackets % 100 == 0)
+  {
+    Serial.printf("[Traffic] 封包: %lu, 位元組: %lu\n",
+                  trafficStats.totalPackets, trafficStats.totalBytes);
+  }
+}
+
+//============================================記憶體管理和監控============================================
+void checkMemory()
+{
+  static unsigned long lastCheck = 0;
+  if (millis() - lastCheck > 30000)
+  { // 每30秒檢查一次
+    lastCheck = millis();
+    Serial.printf("[Memory] Free Heap: %d bytes\n", ESP.getFreeHeap());
+    Serial.printf("[Memory] Max Alloc Heap: %d bytes\n", ESP.getMaxAllocHeap());
+
+    // 檢查客戶端連接數
+    int activeClients = 0;
+    for (int i = 0; i < MAX_SRV_CLIENTS; i++)
+    {
+      if (client[i] && client[i].connected())
+      {
+        activeClients++;
+      }
+    }
+    Serial.printf("[TCP] Active Clients: %d/%d\n", activeClients, MAX_SRV_CLIENTS);
+  }
+}
+
+// 添加客戶端清理函數
+void cleanupClients()
+{
+  static unsigned long lastCleanup = 0;
+  if (millis() - lastCleanup > 60000)
+  { // 每60秒清理一次
+    lastCleanup = millis();
+
+    int cleaned = 0;
+    for (int i = 0; i < MAX_SRV_CLIENTS; i++)
+    {
+      if (client[i] && !client[i].connected())
+      {
+        client[i].stop();
+        cleaned++;
+      }
+    }
+    if (cleaned > 0)
+    {
+      Serial.printf("[Cleanup] Cleaned %d inactive clients\n", cleaned);
+    }
+  }
 }
 
 //============================================每日服務檢查============================================
@@ -1667,8 +1782,15 @@ void loop()
   // 處理Web Server請求
   webServer.handleClient();
 
+  // 添加小延遲，避免過度CPU使用
+  delay(5);
+
   // 處理TCP客戶端
   Working_Light();
   New_Client();
   Client_Recv_Data();
+
+  // 定期清理和監控
+  cleanupClients();
+  checkMemory();
 }
